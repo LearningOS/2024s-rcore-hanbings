@@ -1,9 +1,12 @@
 //! Process management syscalls
 use crate::{
     config::MAX_SYSCALL_NUM,
+    mm::get_physocal_address,
     task::{
-        change_program_brk, exit_current_and_run_next, suspend_current_and_run_next, TaskStatus,
+        change_program_brk, current_user_token, exit_current_and_run_next,
+        suspend_current_and_run_next, TaskStatus,
     },
+    timer::get_time_us,
 };
 
 #[repr(C)]
@@ -41,8 +44,21 @@ pub fn sys_yield() -> isize {
 /// YOUR JOB: get time with second and microsecond
 /// HINT: You might reimplement it with virtual memory management.
 /// HINT: What if [`TimeVal`] is splitted by two pages ?
-pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
+pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
     trace!("kernel: sys_get_time");
+
+    let token = current_user_token();
+    let physical_addres = get_physocal_address(token, ts as usize);
+    let time = get_time_us();
+
+    // should be write to physical address
+    unsafe {
+        *(physical_addres as *mut TimeVal) = TimeVal {
+            sec: time / 1_000_000,
+            usec: time % 1_000_000,
+        };
+    }
+
     -1
 }
 
