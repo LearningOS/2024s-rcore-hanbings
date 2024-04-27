@@ -14,7 +14,9 @@ mod switch;
 #[allow(clippy::module_inception)]
 mod task;
 
+use crate::config::PAGE_SIZE;
 use crate::loader::{get_app_data, get_num_app};
+use crate::mm::{MapPermission, VirtAddr};
 use crate::sync::UPSafeCell;
 use crate::syscall::process::TaskInfo;
 use crate::timer::get_time_ms;
@@ -123,6 +125,66 @@ impl TaskManager {
         let current_task = &mut inner.tasks[current_id];
         current_task.task_lastest_syscall_time = get_time_ms();
         current_task.task_syscall_trace[syscall_id] += 1;
+    }
+
+    fn get_memory(&self, start: usize, len: usize, port: usize) -> isize {
+        // check
+        if start % PAGE_SIZE != 0 {
+            return -1;
+        }
+
+        if port & !0x7 != 0 || port & 0x7 == 0 {
+            return -1;
+        }
+
+        let start_address = VirtAddr::from(start);
+        let end_address = VirtAddr::from(start + len);
+
+        let mut inner = self.inner.exclusive_access();
+        let current_id = inner.current_task;
+        let current_task = &mut inner.tasks[current_id];
+
+        if current_task
+            .memory_set
+            .include_allocated(start_address, end_address)
+        {
+            return -1;
+        }
+
+        let permissions = MapPermission::from_bits((port as u8) << 1).unwrap() | MapPermission::U;
+
+        current_task
+            .memory_set
+            .insert_framed_area(start_address, end_address, permissions);
+
+        0
+    }
+
+    fn free_memory(&self, start: usize, len: usize) -> isize {
+        if start % PAGE_SIZE != 0 {
+            return -1;
+        }
+
+        let start_address = VirtAddr::from(start);
+        let end_address = VirtAddr::from(start + len);
+
+        if !start_address.aligned() {
+            return -1;
+        }
+
+        if !end_address.aligned() {
+            return -1;
+        }
+
+        let mut inner = self.inner.exclusive_access();
+        let current_id = inner.current_task;
+        let current_task = &mut inner.tasks[current_id];
+
+        current_task
+            .memory_set
+            .free_framed_area(start_address, end_address);
+
+        0
     }
 
     /// Get the current 'Running' task's token.
@@ -235,6 +297,16 @@ pub fn current_trap_cx() -> &'static mut TrapContext {
 /// Get current task control block
 pub fn current_task_info() -> TaskInfo {
     TASK_MANAGER.get_current_task_info()
+}
+
+/// Alloc memory
+pub fn current_task_mmap(start: usize, len: usize, port: usize) -> isize {
+    TASK_MANAGER.get_memory(start, len, port)
+}
+
+/// Free up memory
+pub fn current_task_munmap(start: usize, len: usize) -> isize {
+    TASK_MANAGER.free_memory(start, len)
 }
 
 /// Change the current 'Running' task's program break
