@@ -16,6 +16,8 @@ mod task;
 
 use crate::loader::{get_app_data, get_num_app};
 use crate::sync::UPSafeCell;
+use crate::syscall::process::TaskInfo;
+use crate::timer::get_time_ms;
 use crate::trap::TrapContext;
 use alloc::vec::Vec;
 use lazy_static::*;
@@ -114,6 +116,15 @@ impl TaskManager {
             .find(|id| inner.tasks[*id].task_status == TaskStatus::Ready)
     }
 
+    /// add syscall trace
+    fn update_task_info(&self, syscall_id: usize) {
+        let mut inner = self.inner.exclusive_access();
+        let current_id = inner.current_task;
+        let current_task = &mut inner.tasks[current_id];
+        current_task.task_lastest_syscall_time = get_time_ms();
+        current_task.task_syscall_trace[syscall_id] += 1;
+    }
+
     /// Get the current 'Running' task's token.
     fn get_current_token(&self) -> usize {
         let inner = self.inner.exclusive_access();
@@ -124,6 +135,24 @@ impl TaskManager {
     fn get_current_trap_cx(&self) -> &'static mut TrapContext {
         let inner = self.inner.exclusive_access();
         inner.tasks[inner.current_task].get_trap_cx()
+    }
+
+    /// Get task info
+    fn get_current_task_info(&self) -> TaskInfo {
+        let inner = self.inner.exclusive_access();
+        // current task id
+        let current_id = inner.current_task;
+        let current_task = &inner.tasks[current_id];
+
+        TaskInfo {
+            status: current_task.task_status,
+            syscall_times: current_task.task_syscall_trace,
+            time: {
+                let start = current_task.task_start_time;
+                let end = current_task.task_lastest_syscall_time;
+                end - start
+            },
+        }
     }
 
     /// Change the current 'Running' task's program break
@@ -188,6 +217,11 @@ pub fn exit_current_and_run_next() {
     run_next_task();
 }
 
+/// Update task info for syscall
+pub fn update_task_info(syscall_id: usize) {
+    TASK_MANAGER.update_task_info(syscall_id)
+}
+
 /// Get the current 'Running' task's token.
 pub fn current_user_token() -> usize {
     TASK_MANAGER.get_current_token()
@@ -196,6 +230,11 @@ pub fn current_user_token() -> usize {
 /// Get the current 'Running' task's trap contexts.
 pub fn current_trap_cx() -> &'static mut TrapContext {
     TASK_MANAGER.get_current_trap_cx()
+}
+
+/// Get current task control block
+pub fn current_task_info() -> TaskInfo {
+    TASK_MANAGER.get_current_task_info()
 }
 
 /// Change the current 'Running' task's program break

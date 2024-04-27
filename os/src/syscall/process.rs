@@ -3,7 +3,7 @@ use crate::{
     config::MAX_SYSCALL_NUM,
     mm::get_physocal_address,
     task::{
-        change_program_brk, current_user_token, exit_current_and_run_next,
+        change_program_brk, current_task_info, current_user_token, exit_current_and_run_next,
         suspend_current_and_run_next, TaskStatus,
     },
     timer::get_time_us,
@@ -20,11 +20,11 @@ pub struct TimeVal {
 #[allow(dead_code)]
 pub struct TaskInfo {
     /// Task status in it's life cycle
-    status: TaskStatus,
+    pub(crate) status: TaskStatus,
     /// The numbers of syscall called by task
-    syscall_times: [u32; MAX_SYSCALL_NUM],
+    pub(crate) syscall_times: [u32; MAX_SYSCALL_NUM],
     /// Total running time of task
-    time: usize,
+    pub(crate) time: usize,
 }
 
 /// task exits and submit an exit code
@@ -48,26 +48,34 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
     trace!("kernel: sys_get_time");
 
     let token = current_user_token();
-    let physical_addres = get_physocal_address(token, ts as usize);
+    let physical_address = get_physocal_address(token, ts as usize);
     let time = get_time_us();
 
     // should be write to physical address
     unsafe {
-        *(physical_addres as *mut TimeVal) = TimeVal {
+        *(physical_address as *mut TimeVal) = TimeVal {
             sec: time / 1_000_000,
             usec: time % 1_000_000,
         };
     }
 
-    -1
+    0
 }
 
 /// YOUR JOB: Finish sys_task_info to pass testcases
 /// HINT: You might reimplement it with virtual memory management.
 /// HINT: What if [`TaskInfo`] is splitted by two pages ?
-pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
+pub fn sys_task_info(ti: *mut TaskInfo) -> isize {
     trace!("kernel: sys_task_info NOT IMPLEMENTED YET!");
-    -1
+
+    let token = current_user_token();
+    let physical_address = get_physocal_address(token, ti as usize);
+    let ptr = physical_address as *mut TaskInfo;
+    unsafe {
+        *ptr = current_task_info();
+    }
+
+    0
 }
 
 // YOUR JOB: Implement mmap.
