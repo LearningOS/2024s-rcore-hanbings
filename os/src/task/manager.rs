@@ -66,6 +66,7 @@ pub fn spawn_task(path: *const u8) -> isize {
             parent.inner_exclusive_access().children.push(task.clone());
             task.inner_exclusive_access().parent = Some(Arc::downgrade(&parent));
         }
+
         add_task(task.clone());
         task.pid.0 as isize
     } else {

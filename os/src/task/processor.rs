@@ -117,7 +117,7 @@ pub fn schedule(switched_task_cx_ptr: *mut TaskContext) {
 /// Get current task info
 pub fn current_task_info() -> TaskInfo {
     let current_task_control_block = current_task().unwrap();
-    let current_task = current_task_control_block.inner.exclusive_access();
+    let current_task = current_task_control_block.inner_exclusive_access();
 
     TaskInfo {
         status: current_task.task_status,
@@ -133,7 +133,7 @@ pub fn current_task_info() -> TaskInfo {
 /// Update task info
 pub fn update_task_info(syscall_id: usize) {
     let current_task_control_block = current_task().unwrap();
-    let mut current_task = current_task_control_block.inner.exclusive_access();
+    let mut current_task = current_task_control_block.inner_exclusive_access();
 
     current_task.task_lastest_syscall_time = get_time_ms();
     current_task.task_syscall_trace[syscall_id] += 1;
@@ -154,7 +154,7 @@ pub fn allocate_memory(start: usize, len: usize, port: usize) -> isize {
     let end_address = VirtAddr::from(start + len);
 
     let current_task_control_block = current_task().unwrap();
-    let mut current_task = current_task_control_block.inner.exclusive_access();
+    let mut current_task = current_task_control_block.inner_exclusive_access();
 
     if current_task
         .memory_set
@@ -190,7 +190,7 @@ pub fn free_memory(start: usize, len: usize) -> isize {
     }
 
     let current_task_control_block = current_task().unwrap();
-    let mut current_task = current_task_control_block.inner.exclusive_access();
+    let mut current_task = current_task_control_block.inner_exclusive_access();
 
     current_task
         .memory_set

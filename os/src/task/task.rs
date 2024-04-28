@@ -24,7 +24,7 @@ pub struct TaskControlBlock {
     pub(crate) kernel_stack: KernelStack,
 
     /// Mutable
-    pub(crate) inner: UPSafeCell<TaskControlBlockInner>,
+    inner: UPSafeCell<TaskControlBlockInner>,
 }
 
 impl TaskControlBlock {
@@ -65,6 +65,8 @@ pub struct TaskControlBlockInner {
 
     /// It is set when active exit or execution error occurs
     pub exit_code: i32,
+
+    /// File Descriptor Table: Record the files opened by this task
     pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>,
 
     /// Heap bottom
