@@ -60,6 +60,13 @@ impl MemorySet {
             None,
         );
     }
+    /// Check if memory range include allocated memory
+    pub fn include_allocated(&self, start_address: VirtAddr, end_address: VirtAddr) -> bool {
+        self.areas.iter().any(|area| {
+            area.vpn_range.get_end() > start_address.floor()
+                && area.vpn_range.get_start() < end_address.ceil()
+        })
+    }
     /// remove a area
     pub fn remove_area_with_start_vpn(&mut self, start_vpn: VirtPageNum) {
         if let Some((idx, area)) = self
@@ -70,6 +77,20 @@ impl MemorySet {
         {
             area.unmap(&mut self.page_table);
             self.areas.remove(idx);
+        }
+    }
+    /// free a framed area
+    pub fn free_framed_area(&mut self, start_address: VirtAddr, end_address: VirtAddr) {
+        let virtual_page_start = start_address.floor();
+        let virtual_page_end = end_address.ceil();
+        let index = self.areas.iter_mut().position(|map| {
+            map.vpn_range.get_start() == virtual_page_start
+                && map.vpn_range.get_end() == virtual_page_end
+        });
+
+        if let Some(index) = index {
+            self.areas[index].unmap(&mut self.page_table);
+            self.areas.remove(index);
         }
     }
     /// Add a new MapArea into this MemorySet.
