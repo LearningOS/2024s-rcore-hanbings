@@ -198,3 +198,16 @@ pub fn free_memory(start: usize, len: usize) -> isize {
 
     0
 }
+
+/// Set task priority
+pub fn set_priority(priority: isize) -> isize {
+    if priority < 2 {
+        return -1;
+    }
+
+    let cpu_cur_task = current_task().unwrap();
+    let mut task_inner = cpu_cur_task.inner_exclusive_access();
+    task_inner.priority = priority;
+
+    task_inner.priority
+}

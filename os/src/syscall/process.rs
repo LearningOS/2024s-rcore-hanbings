@@ -8,7 +8,8 @@ use crate::{
     mm::{get_physocal_address, translated_refmut, translated_str},
     task::{
         add_task, allocate_memory, current_task, current_task_info, current_user_token,
-        exit_current_and_run_next, free_memory, suspend_current_and_run_next, TaskStatus,
+        exit_current_and_run_next, free_memory, set_priority, spawn_task,
+        suspend_current_and_run_next, TaskStatus,
     },
     timer::get_time_us,
 };
@@ -187,19 +188,21 @@ pub fn sys_sbrk(size: i32) -> isize {
 
 /// YOUR JOB: Implement spawn.
 /// HINT: fork + exec =/= spawn
-pub fn sys_spawn(_path: *const u8) -> isize {
+pub fn sys_spawn(path: *const u8) -> isize {
     trace!(
         "kernel:pid[{}] sys_spawn NOT IMPLEMENTED",
         current_task().unwrap().pid.0
     );
-    -1
+
+    spawn_task(path)
 }
 
 // YOUR JOB: Set task priority.
-pub fn sys_set_priority(_prio: isize) -> isize {
+pub fn sys_set_priority(prio: isize) -> isize {
     trace!(
         "kernel:pid[{}] sys_set_priority NOT IMPLEMENTED",
         current_task().unwrap().pid.0
     );
-    -1
+
+    set_priority(prio)
 }
