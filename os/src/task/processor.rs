@@ -8,6 +8,8 @@ use super::__switch;
 use super::{fetch_task, TaskStatus};
 use super::{TaskContext, TaskControlBlock};
 use crate::sync::UPSafeCell;
+use crate::syscall::process::TaskInfo;
+use crate::timer::get_time_ms;
 use crate::trap::TrapContext;
 use alloc::sync::Arc;
 use lazy_static::*;
@@ -98,6 +100,31 @@ pub fn current_trap_cx() -> &'static mut TrapContext {
         .unwrap()
         .inner_exclusive_access()
         .get_trap_cx()
+}
+
+/// Get current task info
+pub fn current_task_info() -> TaskInfo {
+    let current_task_control_block = current_task().unwrap();
+    let current_task = current_task_control_block.inner.exclusive_access();
+
+    TaskInfo {
+        status: current_task.task_status,
+        syscall_times: current_task.task_syscall_trace,
+        time: {
+            let start = current_task.task_start_time;
+            let end = current_task.task_lastest_syscall_time;
+            end - start
+        },
+    }
+}
+
+/// Update task info
+pub fn update_task_info(syscall_id: usize) {
+    let current_task_control_block = current_task().unwrap();
+    let mut current_task = current_task_control_block.inner.exclusive_access();
+
+    current_task.task_lastest_syscall_time = get_time_ms();
+    current_task.task_syscall_trace[syscall_id] += 1;
 }
 
 ///Return to idle control flow for new scheduling

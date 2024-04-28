@@ -213,3 +213,23 @@ pub fn translated_refmut<T>(token: usize, ptr: *mut T) -> &'static mut T {
         .unwrap()
         .get_mut()
 }
+
+/// get the physical address from the virtual address
+pub fn get_physocal_address(token: usize, ptr: usize) -> usize {
+    let page_table = PageTable::from_token(token);
+
+    // get the virtual address and the offset
+    let virtual_address = VirtAddr::from(ptr);
+    let offset_address = virtual_address.page_offset();
+
+    // get the physical address
+    let virt_page_num = virtual_address.floor();
+    let physical_page_num = match page_table.translate(virt_page_num) {
+        Some(virt_page_num) => virt_page_num.ppn(),
+        None => panic!("Invalid address: 0x{:x}", ptr),
+    };
+
+    let physical_address = physical_page_num.0 << 12 | offset_address;
+
+    physical_address
+}
