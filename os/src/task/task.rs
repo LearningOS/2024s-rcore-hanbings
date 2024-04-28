@@ -78,6 +78,12 @@ pub struct TaskControlBlockInner {
 
     /// The numbers of syscall called by task
     pub task_syscall_trace: [u32; MAX_SYSCALL_NUM],
+
+    /// The stride of the task
+    pub stride: isize,
+
+    /// The priority of the task
+    pub priority: isize,
 }
 
 impl TaskControlBlockInner {
@@ -131,6 +137,8 @@ impl TaskControlBlock {
                     task_start_time: get_time_ms(),
                     task_lastest_syscall_time: get_time_ms(),
                     task_syscall_trace: [0; MAX_SYSCALL_NUM],
+                    stride: 0,
+                    priority: 0,
                 })
             },
         };
@@ -204,9 +212,11 @@ impl TaskControlBlock {
                     exit_code: 0,
                     heap_bottom: parent_inner.heap_bottom,
                     program_brk: parent_inner.program_brk,
-                    task_start_time: get_time_ms(),
-                    task_lastest_syscall_time: get_time_ms(),
-                    task_syscall_trace: [0; MAX_SYSCALL_NUM],
+                    task_start_time: parent_inner.task_start_time,
+                    task_lastest_syscall_time: parent_inner.task_lastest_syscall_time,
+                    task_syscall_trace: parent_inner.task_syscall_trace,
+                    stride: parent_inner.stride,
+                    priority: parent_inner.priority,
                 })
             },
         });
