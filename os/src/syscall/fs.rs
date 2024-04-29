@@ -51,7 +51,12 @@ pub fn sys_open(path: *const u8, flags: u32) -> isize {
     let task = current_task().unwrap();
     let token = current_user_token();
     let path = translated_str(token, path);
-    if let Some(inode) = open_file(path.as_str(), OpenFlags::from_bits(flags).unwrap()) {
+    let flags = OpenFlags::from_bits(flags).unwrap();
+    if let Some(inode) = open_file(path.as_str(), flags) {
+        if !flags.contains(OpenFlags::CREATE) && inode.is_deleted(path.as_str()) {
+            return -1;
+        }
+
         let mut inner = task.inner_exclusive_access();
         let fd = inner.alloc_fd();
         inner.fd_table[fd] = Some(inode);

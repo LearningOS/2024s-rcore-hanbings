@@ -1,6 +1,7 @@
 //! File trait & inode(dir, file, pipe, stdin, stdout)
 
 mod inode;
+mod map;
 mod stdio;
 
 use crate::mm::UserBuffer;
