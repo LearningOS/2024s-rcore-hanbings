@@ -31,9 +31,9 @@ use switch::__switch;
 pub use task::{TaskControlBlock, TaskStatus};
 
 pub use id::{kstack_alloc, pid_alloc, KernelStack, PidHandle};
-pub use manager::{add_task, spawn_task};
+pub use manager::add_task;
 pub use processor::{
-    allocate_memory, current_task, current_task_info, current_trap_cx, current_user_token,
+    allocate_memory, current_task, current_task_info, current_trap_cx, current_user_token, spawn_task,
     free_memory, run_tasks, schedule, set_priority, take_current_task, update_task_info, Processor,
 };
 /// Suspend the current 'Running' task and run the next task in task list.

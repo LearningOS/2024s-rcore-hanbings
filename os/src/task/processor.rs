@@ -4,11 +4,12 @@
 //! the current running state of CPU is recorded,
 //! and the replacement and transfer of control flow of different applications are executed.
 
-use super::__switch;
+use super::{__switch, add_task};
 use super::{fetch_task, TaskStatus};
 use super::{TaskContext, TaskControlBlock};
 use crate::config::PAGE_SIZE;
-use crate::mm::{MapPermission, VirtAddr};
+use crate::fs::{open_file, OpenFlags};
+use crate::mm::{translated_str, MapPermission, VirtAddr};
 use crate::sync::UPSafeCell;
 use crate::syscall::process::TaskInfo;
 use crate::timer::get_time_ms;
@@ -197,6 +198,21 @@ pub fn free_memory(start: usize, len: usize) -> isize {
         .free_framed_area(start_address, end_address);
 
     0
+}
+
+/// Spawn a new task
+pub fn spawn_task(path: *const u8) -> isize {
+    let token = current_user_token();
+    let path = translated_str(token, path);
+    if let Some(app_inode) = open_file(path.as_str(), OpenFlags::RDONLY) {
+        let elf_data = app_inode.read_all();
+        let task = current_task().unwrap().exec_process(&elf_data);
+
+        add_task(task.clone());
+        task.pid.0 as isize
+    } else {
+        -1
+    }
 }
 
 /// Set task priority
