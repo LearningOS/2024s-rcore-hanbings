@@ -1,6 +1,6 @@
 //! File and filesystem-related syscalls
 use crate::fs::{linkat, open_file, unlinkat, OpenFlags, Stat};
-use crate::mm::{translated_byte_buffer, translated_str, UserBuffer};
+use crate::mm::{get_physocal_address, translated_byte_buffer, translated_str, UserBuffer};
 use crate::task::{current_task, current_user_token};
 
 pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
@@ -92,11 +92,13 @@ pub fn sys_fstat(fd: usize, st: *mut Stat) -> isize {
         // release Task lock manually to avoid deadlock
         drop(inner);
         if let Some(stat) = file.stat() {
+            let token = current_user_token();
+            let physical_address = get_physocal_address(token, st as usize);
+
+            let ptr = physical_address as *mut Stat;
+
             unsafe {
-                (*st).dev = stat.dev;
-                (*st).ino = stat.ino;
-                (*st).mode = stat.mode;
-                (*st).nlink = stat.nlink;
+                *ptr = stat;
             }
 
             return 0;

@@ -167,7 +167,7 @@ impl File for OSInode {
                     false => StatMode::FILE,
                 }
             },
-            nlink: 0,
+            nlink: 1,
             pad: [0; 7],
         })
     }
