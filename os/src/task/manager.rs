@@ -11,7 +11,7 @@ use lazy_static::*;
 ///A array of `TaskControlBlock` that is thread-safe
 pub struct TaskManager {
     ready_queue: VecDeque<Arc<TaskControlBlock>>,
-    
+
     /// The stopping task, leave a reference so that the kernel stack will not be recycled when switching tasks
     stop_task: Option<Arc<TaskControlBlock>>,
 }
@@ -29,17 +29,36 @@ impl TaskManager {
     pub fn add(&mut self, task: Arc<TaskControlBlock>) {
         self.ready_queue.push_back(task);
     }
-    /// Take a process out of the ready queue
+    /// Fetch a task from ready queue
     pub fn fetch(&mut self) -> Option<Arc<TaskControlBlock>> {
+        for (index, task) in self.ready_queue.iter().enumerate() {
+            let tid = task.inner_exclusive_access().res.as_ref().unwrap().tid;
+            let process = task.process.upgrade().unwrap();
+            let mut process_inner = process.inner_exclusive_access();
+
+            if !process_inner.locker.finish[tid] {
+                process_inner.locker.alloc(tid);
+
+                self.ready_queue.remove(index);
+                return Some(self.ready_queue[index].clone());
+            }
+        }
+
         self.ready_queue.pop_front()
     }
+    /// Remove a task
     pub fn remove(&mut self, task: Arc<TaskControlBlock>) {
-        if let Some((id, _)) = self
+        if let Some((id, f_task)) = self
             .ready_queue
             .iter()
             .enumerate()
             .find(|(_, t)| Arc::as_ptr(t) == Arc::as_ptr(&task))
         {
+            let tid = f_task.inner_exclusive_access().res.as_ref().unwrap().tid;
+            let process = task.process.upgrade().unwrap();
+            let mut process_inner = process.inner_exclusive_access();
+            process_inner.locker.finish(tid);
+
             self.ready_queue.remove(id);
         }
     }
@@ -50,7 +69,6 @@ impl TaskManager {
         // case) so that we can simply replace it;
         self.stop_task = Some(task);
     }
-
 }
 
 lazy_static! {
